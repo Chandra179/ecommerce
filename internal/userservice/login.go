@@ -4,11 +4,18 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/Chandra179/ecommerce/configs"
+	"github.com/Chandra179/ecommerce/pkg/utils"
 
 	"golang.org/x/oauth2"
 )
+
+var stateStore = struct {
+	m map[string]bool
+	sync.RWMutex
+}{m: make(map[string]bool)}
 
 type Login struct {
 	GlOauthCfg *configs.Config
@@ -29,17 +36,36 @@ func (l *Login) HandleLogin() {
 
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		// state shoulld be unique per request to prevent CSRF, need to validate state upon callback to ensure response is legitimate
-		authURL := oauth2Config.AuthCodeURL("state", oauth2.AccessTypeOffline)
+		state, err := utils.GenerateRandomString(32)
+		if err != nil {
+			http.Error(w, "Error generating state", http.StatusInternalServerError)
+			return
+		}
+
+		// Store the state in a map for verification in the callback (no need for lock)
+		stateStore.m[state] = true
+		authURL := oauth2Config.AuthCodeURL(state, oauth2.AccessTypeOffline)
 		http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
 	})
 
 	// TODO: handle state by using random bytes
 	http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
 		state := r.URL.Query().Get("state")
-		if state != "state" {
-			http.Error(w, "State does not match", http.StatusBadRequest)
+
+		// Verify the state
+		stateStore.RLock()
+		_, exists := stateStore.m[state]
+		stateStore.RUnlock()
+
+		if !exists {
+			http.Error(w, "Invalid state", http.StatusBadRequest)
 			return
 		}
+
+		// State is valid, remove it to prevent replay attacks
+		stateStore.Lock()
+		delete(stateStore.m, state)
+		stateStore.Unlock()
 
 		code := r.URL.Query().Get("code")
 		token, err := oauth2Config.Exchange(context.Background(), code)
