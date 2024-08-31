@@ -24,11 +24,11 @@ jobs:
             const labels = [];
 
             // Define label assignment logic based on branch name
-            if (branchName.startsWith('feature/')) {
+            if (branchName.startsWith('feat/')) {
               labels.push('feature');
-            } else if (branchName.startsWith('bugfix/')) {
+            } else if (branchName.startsWith('fix/')) {
               labels.push('bug');
-            } else if (branchName.startsWith('improvement/')) {
+            } else if (branchName.startsWith('impv/')) {
               labels.push('improvement');
             }
 
