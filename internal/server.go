@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Chandra179/ecommerce/configs"
-	"github.com/Chandra179/ecommerce/internal/userservice"
+	"github.com/Chandra179/ecommerce/pkg/oauth"
 )
 
 func StartServer() {
@@ -13,8 +13,8 @@ func StartServer() {
 	if err != nil {
 		fmt.Println("err")
 	}
-	login := userservice.NewLogin(config)
-	login.HandleLogin()
+	googleOauth := oauth.NewGoogleOauth(config)
+	googleOauth.OauthManagement()
 	err = http.ListenAndServe(":8080", nil)
 	if err != nil {
 		fmt.Println("err")
